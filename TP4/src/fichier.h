@@ -3,5 +3,6 @@
 
 int lire_fichier(const char *nom_de_fichier);
 int ecrire_dans_fichier(const char *nom_de_fichier, const char *message);
+int ajouter_dans_fichier(const char *nom_de_fichier, const char *message);
 
 #endif

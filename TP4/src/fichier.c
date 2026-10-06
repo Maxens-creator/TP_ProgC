@@ -52,3 +52,23 @@ int ecrire_dans_fichier(const char *nom_de_fichier, const char *message)
 	printf("Le message a été écrit dans le fichier %s.\n", nom_de_fichier);
 	return 1;
 }
+
+int ajouter_dans_fichier(const char *nom_de_fichier, const char *message)
+{
+	FILE *flux = fopen(nom_de_fichier, "a");
+	if (flux == NULL) {
+		perror(nom_de_fichier);
+		return 0;
+	}
+
+	int erreur = fprintf(flux, "%s\n", message) < 0;
+	if (fclose(flux) != 0) {
+		erreur = 1;
+	}
+	if (erreur) {
+		perror(nom_de_fichier);
+		return 0;
+	}
+
+	return 1;
+}
