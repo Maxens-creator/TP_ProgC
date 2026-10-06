@@ -2,6 +2,7 @@
 #include <stddef.h>
 
 #include "fichier.h"
+#include "liste.h"
 #include "operator.h"
 
 static int lire_ligne(const char *invite, char *texte, size_t taille)
@@ -107,6 +108,38 @@ static int exercice_4_2(void)
 	return 1;
 }
 
+static int exercice_4_7(void)
+{
+	const struct couleur couleurs[] = {
+		{0xff, 0x00, 0x00, 0xff},
+		{0x00, 0xff, 0x00, 0xff},
+		{0x00, 0x00, 0xff, 0xff},
+		{0xff, 0xff, 0xff, 0xff},
+		{0x00, 0x00, 0x00, 0xff},
+		{0xff, 0xff, 0x00, 0xff},
+		{0x00, 0xff, 0xff, 0xff},
+		{0xff, 0x00, 0xff, 0xff},
+		{0xff, 0x80, 0x00, 0xff},
+		{0x80, 0x80, 0x80, 0xff}
+	};
+	const size_t nombre_couleurs = sizeof(couleurs) / sizeof(couleurs[0]);
+	struct liste_couleurs liste;
+	init_liste(&liste);
+
+	for (size_t index = 0; index < nombre_couleurs; index++) {
+		if (!insertion(&couleurs[index], &liste)) {
+			fprintf(stderr, "Impossible d'ajouter une couleur à la liste.\n");
+			detruire_liste(&liste);
+			return 1;
+		}
+	}
+
+	printf("Liste des couleurs :\n");
+	parcours(&liste);
+	detruire_liste(&liste);
+	return 0;
+}
+
 int main(void)
 {
 	int choix;
@@ -114,6 +147,7 @@ int main(void)
 	printf("Choisissez l'exercice :\n");
 	printf("1. Calcul avec opérateurs\n");
 	printf("2. Gestion de fichiers\n");
+	printf("7. Gestion d'une liste de couleurs\n");
 	printf("Votre choix : ");
 	if (scanf("%d", &choix) != 1) {
 		fprintf(stderr, "Choix invalide.\n");
@@ -125,6 +159,8 @@ int main(void)
 		return exercice_4_1();
 	case 2:
 		return exercice_4_2();
+	case 7:
+		return exercice_4_7();
 	default:
 		fprintf(stderr, "Exercice invalide.\n");
 		return 1;
