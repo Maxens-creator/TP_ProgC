@@ -2,6 +2,7 @@
 
 #include <dirent.h>
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -114,6 +115,116 @@ int lire_dossier_recursif(const char *nom_repertoire)
 	return lire_dossier_recursif_interne(nom_repertoire);
 }
 
+struct pile_chemins {
+	char **chemins;
+	size_t nombre;
+	size_t capacite;
+};
+
+static int empiler_chemin(struct pile_chemins *pile, char *chemin)
+{
+	if (pile->nombre == pile->capacite) {
+		size_t nouvelle_capacite = pile->capacite == 0 ? 16 : pile->capacite * 2;
+		if (nouvelle_capacite < pile->capacite
+			|| nouvelle_capacite > SIZE_MAX / sizeof(*pile->chemins)) {
+			return 0;
+		}
+		char **nouveaux_chemins = realloc(pile->chemins,
+			nouvelle_capacite * sizeof(*pile->chemins));
+		if (nouveaux_chemins == NULL) {
+			return 0;
+		}
+		pile->chemins = nouveaux_chemins;
+		pile->capacite = nouvelle_capacite;
+	}
+
+	pile->chemins[pile->nombre++] = chemin;
+	return 1;
+}
+
+static char *copier_chaine(const char *texte)
+{
+	size_t taille = strlen(texte) + 1;
+	char *copie = malloc(taille);
+	if (copie != NULL) {
+		memcpy(copie, texte, taille);
+	}
+	return copie;
+}
+
+int lire_dossier_iteratif(const char *nom_repertoire)
+{
+	struct pile_chemins pile = {NULL, 0, 0};
+	char *racine = copier_chaine(nom_repertoire);
+	if (racine == NULL || !empiler_chemin(&pile, racine)) {
+		free(racine);
+		free(pile.chemins);
+		perror("allocation mémoire");
+		return -1;
+	}
+
+	int statut = 0;
+	while (pile.nombre > 0) {
+		char *repertoire = pile.chemins[--pile.nombre];
+		DIR *dossier = opendir(repertoire);
+		if (dossier == NULL) {
+			perror(repertoire);
+			statut = -1;
+			free(repertoire);
+			continue;
+		}
+
+		struct dirent *entree;
+		for (;;) {
+			errno = 0;
+			entree = readdir(dossier);
+			if (entree == NULL) {
+				if (errno != 0) {
+					perror(repertoire);
+					statut = -1;
+				}
+				break;
+			}
+			if (entree->d_name[0] == '.'
+				&& (entree->d_name[1] == '\0'
+					|| (entree->d_name[1] == '.' && entree->d_name[2] == '\0'))) {
+				continue;
+			}
+
+			char *chemin = construire_chemin(repertoire, entree->d_name);
+			if (chemin == NULL) {
+				perror("allocation mémoire");
+				statut = -1;
+				continue;
+			}
+			printf("%s\n", chemin);
+
+			struct stat informations;
+			if (lstat(chemin, &informations) != 0) {
+				perror(chemin);
+				statut = -1;
+			} else if (S_ISDIR(informations.st_mode)) {
+				if (!empiler_chemin(&pile, chemin)) {
+					perror("allocation mémoire");
+					statut = -1;
+				} else {
+					chemin = NULL;
+				}
+			}
+			free(chemin);
+		}
+
+		if (closedir(dossier) != 0) {
+			perror(repertoire);
+			statut = -1;
+		}
+		free(repertoire);
+	}
+
+	free(pile.chemins);
+	return statut;
+}
+
 int main(int argc, char *argv[])
 {
 	if (argc == 2) {
@@ -122,6 +233,11 @@ int main(int argc, char *argv[])
 	if (argc == 3 && strcmp(argv[2], "--recursive") == 0) {
 		return lire_dossier_recursif(argv[1]) == 0 ? 0 : 1;
 	}
-	fprintf(stderr, "Utilisation : %s <nom_du_repertoire> [--recursive]\n", argv[0]);
+	if (argc == 3 && strcmp(argv[2], "--iterative") == 0) {
+		return lire_dossier_iteratif(argv[1]) == 0 ? 0 : 1;
+	}
+	fprintf(stderr,
+		"Utilisation : %s <nom_du_repertoire> [--recursive|--iterative]\n",
+		argv[0]);
 	return 1;
 }
