@@ -12,6 +12,7 @@
  * port d'ordinateur pour envoyer et recevoir des messages
  */
 #define PORT 8089
+#define TAILLE_MESSAGE 2048
 
 /*
  * Fonction d'envoi et de réception de messages
