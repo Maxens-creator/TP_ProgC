@@ -1,6 +1,5 @@
 /*
  * SPDX-FileCopyrightText: 2021 John Samuel
- *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -8,6 +7,7 @@
 
 #include <arpa/inet.h>
 #include <errno.h>
+#include <math.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdio.h>
@@ -75,8 +75,59 @@ int renvoie_message(int client_socket_fd, const char *message)
 	return EXIT_SUCCESS;
 }
 
+int recois_numeros_calcule(int client_socket_fd, const char *message)
+{
+	char operateur;
+	double num1;
+	double num2;
+	char texte_supplementaire;
+	if (sscanf(message, "calcule : %c %lf %lf %c", &operateur,
+		&num1, &num2, &texte_supplementaire) != 3
+		|| !isfinite(num1) || !isfinite(num2)) {
+		return renvoie_message(client_socket_fd,
+			"erreur : format attendu calcule : <opérateur> <num1> <num2>");
+	}
+
+	double resultat;
+	switch (operateur) {
+	case '+':
+		resultat = num1 + num2;
+		break;
+	case '-':
+		resultat = num1 - num2;
+		break;
+	case '*':
+		resultat = num1 * num2;
+		break;
+	case '/':
+		if (num2 == 0.0) {
+			return renvoie_message(client_socket_fd,
+				"erreur : division par zéro");
+		}
+		resultat = num1 / num2;
+		break;
+	default:
+		return renvoie_message(client_socket_fd,
+			"erreur : opérateur non pris en charge");
+	}
+
+	if (!isfinite(resultat)) {
+		return renvoie_message(client_socket_fd, "erreur : résultat non fini");
+	}
+	char reponse[TAILLE_MESSAGE];
+	int longueur = snprintf(reponse, sizeof(reponse), "calcule : %.10g", resultat);
+	if (longueur < 0 || (size_t)longueur >= sizeof(reponse)) {
+		return EXIT_FAILURE;
+	}
+	return renvoie_message(client_socket_fd, reponse);
+}
+
 int recois_envoie_message(int client_socket_fd, const char *message)
 {
+	if (strncmp(message, "calcule :", 9) == 0) {
+		printf("Calcul reçu: %s\n", message);
+		return recois_numeros_calcule(client_socket_fd, message);
+	}
 	if (strncmp(message, "message: ", 9) != 0) {
 		fprintf(stderr, "Format de message invalide.\n");
 		return EXIT_FAILURE;
@@ -132,7 +183,6 @@ int main(void)
 {
 	int option = 1;
 	struct sockaddr_in adresse_serveur;
-
 	socketfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (socketfd < 0) {
 		perror("socket");

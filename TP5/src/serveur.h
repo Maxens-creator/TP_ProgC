@@ -17,5 +17,6 @@
  */
 int renvoie_message(int client_socket_fd, const char *message);
 int recois_envoie_message(int client_socket_fd, const char *message);
+int recois_numeros_calcule(int client_socket_fd, const char *message);
 
 #endif

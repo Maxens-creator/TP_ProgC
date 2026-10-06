@@ -110,6 +110,19 @@ int envoie_recois_message(int socketfd)
     return 1;
   }
 
+  if (strncmp(message, "calcule :", 9) == 0) {
+    char operateur;
+    double num1;
+    double num2;
+    char texte_supplementaire;
+    if (sscanf(message, "calcule : %c %lf %lf %c", &operateur,
+        &num1, &num2, &texte_supplementaire) != 3) {
+      fprintf(stderr, "Format attendu : calcule : <opérateur> <num1> <num2>\n");
+      return -1;
+    }
+    return envoie_operateur_numeros(socketfd, operateur, num1, num2);
+  }
+
   int taille_requete = snprintf(requete, sizeof(requete), "message: %s", message);
   if (taille_requete < 0 || (size_t)taille_requete >= sizeof(requete)
     || envoyer_ligne(socketfd, requete) != 0) {
@@ -121,6 +134,25 @@ int envoie_recois_message(int socketfd)
     return -1;
   }
   printf("Message reçu: %s\n", reponse);
+  return 0;
+}
+
+int envoie_operateur_numeros(int socketfd, char operateur, double num1, double num2)
+{
+  char requete[TAILLE_MESSAGE];
+  char reponse[TAILLE_MESSAGE];
+  int longueur = snprintf(requete, sizeof(requete), "calcule : %c %.17g %.17g",
+  operateur, num1, num2);
+  if (longueur < 0 || (size_t)longueur >= sizeof(requete)
+  || envoyer_ligne(socketfd, requete) != 0) {
+  return -1;
+  }
+
+  int statut = recevoir_ligne(socketfd, reponse, sizeof(reponse));
+  if (statut <= 0) {
+  return -1;
+  }
+  printf("%s\n", reponse);
   return 0;
 }
 
